@@ -7,19 +7,19 @@ import (
 )
 
 type state struct {
-	transitions  map[string]state
-	say          string
-	memoryUpdate string
-	memorySeek   []string
+	transitions map[string]state
+	say         string
+	memoryWrite string
+	memoryRead  []string
 }
 
 var currState, prevState state
 
 var memory map[string]string
 
-func buildState(say, memoryUpdate string, memoryRetrieve []string) state {
+func buildState(say, memoryWrite string, memoryRead []string) state {
 	newState := state{transitions: make(map[string]state),
-		say: say, memoryUpdate: memoryUpdate, memorySeek: memoryRetrieve}
+		say: say, memoryWrite: memoryWrite, memoryRead: memoryRead}
 	return newState
 }
 
@@ -52,7 +52,7 @@ func ConversationLoop(reader io.Reader, writer io.Writer) {
 
 func act(input string) string {
 	if input != "" {
-		memory[prevState.memoryUpdate] = input[:len(input)-1]
+		memory[prevState.memoryWrite] = input[:len(input)-1]
 	}
 	memoryOut := retrieveMemory(currState)
 	out := fmt.Sprintln()
@@ -65,8 +65,8 @@ func act(input string) string {
 }
 
 func retrieveMemory(fromState state) []interface{} {
-	memoryOut := make([]interface{}, len(currState.memorySeek))
-	for i, str := range currState.memorySeek {
+	memoryOut := make([]interface{}, len(currState.memoryRead))
+	for i, str := range currState.memoryRead {
 		memoryOut[i] = memory[str]
 	}
 	return memoryOut
