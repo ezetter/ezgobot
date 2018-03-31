@@ -3,7 +3,7 @@ package ezbot
 import (
 	"bufio"
 	"fmt"
-	"os"
+	"io"
 )
 
 type state struct {
@@ -38,12 +38,15 @@ func Init() {
 }
 
 // ConversationLoop runs the bot's conversation loop.
-func ConversationLoop() {
-	reader := bufio.NewReader(os.Stdin)
+func ConversationLoop(reader io.Reader, writer io.Writer) {
+	newReader := bufio.NewReader(reader)
 	input := ""
 	for {
-		fmt.Print(act(input))
-		input, _ = reader.ReadString('\n')
+		fmt.Fprint(writer, act(input))
+		input, _ = newReader.ReadString('\n')
+		if input == "exit" {
+			return
+		}
 	}
 }
 
