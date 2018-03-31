@@ -17,24 +17,21 @@ var currState, prevState state
 
 var memory map[string]string
 
-func buildState(say, memoryWrite string, memoryRead []string) state {
+func (s *state) buildState(say, memoryWrite string, memoryRead []string) *state {
 	newState := state{transitions: make(map[string]state),
 		say: say, memoryWrite: memoryWrite, memoryRead: memoryRead}
-	return newState
+	if s.transitions != nil {
+		s.transitions["default"] = newState
+	}
+	return &newState
 }
 
 // Init initializes the bot.
 func Init() {
 	memory = make(map[string]string)
-	initialState := buildState("", "", nil)
-	state2 := buildState("Hi. What's your name?", "name", nil)
-	state3 := buildState("Hello %s! How can I help you?", "des_act", []string{"name"})
-	state4 := buildState("Sorry %s, I don't know how to %s. How can I help you?", "des_act", []string{"name", "des_act"})
-	initialState.transitions["default"] = state2
-	state2.transitions["default"] = state3
-	state3.transitions["default"] = state4
-	state4.transitions["default"] = state4
-	currState = state2
+	currState = *currState.buildState("Hi. What's your name?", "name", nil)
+	currState.buildState("Hello %s! How can I help you?", "des_act", []string{"name"}).
+		buildState("Sorry %s, I don't know how to %s. How can I help you?", "des_act", []string{"name", "des_act"})
 }
 
 // ConversationLoop runs the bot's conversation loop.
