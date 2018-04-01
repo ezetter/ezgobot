@@ -2,6 +2,7 @@ package ezbot
 
 import (
 	"bytes"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -25,4 +26,19 @@ func TestAct(t *testing.T) {
 	test(act(""), "\nHi. What's your name? ", t)
 	test(act("Bob\n"), "\nHello Bob! How can I help you? ", t)
 	test(act("do nothing\n"), "\nSorry Bob, I don't know how to do nothing. How can I help you? ", t)
+	test(act("What is your name?\n"), "\nMy name is Machina. ", t)
+}
+
+func TestDetermineTransition(t *testing.T) {
+	r1, _ := regexp.Compile("I'm \\d+ years old")
+	t1 := transitionMapping{r1, "age_input"}
+	r2, _ := regexp.Compile("I'm at \\w")
+	t2 := transitionMapping{r2, "loc_input"}
+	transitions := []transitionMapping{t1, t2}
+	trans := determineTransition("I'm 19 years old", transitions)
+	test(trans, "age_input", t)
+	trans = determineTransition("I'm at home", transitions)
+	test(trans, "loc_input", t)
+	trans = determineTransition("ugh", transitions)
+	test(trans, "default", t)
 }
