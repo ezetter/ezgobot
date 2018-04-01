@@ -3,10 +3,10 @@ package main
 import (
 	"os"
 
-	"github.com/ezetter/ezbot"
+	ezgobot "github.com/ezetter/ezgobot"
 )
 
 func main() {
-	ezbot.Init()
-	ezbot.ConversationLoop(os.Stdin, os.Stdout)
+	ezgobot.Init()
+	ezgobot.ConversationLoop(os.Stdin, os.Stdout)
 }

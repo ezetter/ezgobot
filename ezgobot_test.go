@@ -1,4 +1,4 @@
-package ezbot
+package ezgobot
 
 import (
 	"bytes"
