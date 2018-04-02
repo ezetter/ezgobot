@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"strings"
 )
 
 type transitionMapping struct {
@@ -16,6 +17,7 @@ type transitionMapping struct {
 type State struct {
 	id                      string
 	transitions             map[string]*State
+	immediateTransition     *State
 	transitionInputMappings []transitionMapping
 	say                     string
 	memoryWrite             string
@@ -39,6 +41,13 @@ func (s *State) BuildTransitionState(say string, transitionName string) *State {
 func (s *State) AddTransitionMapping(matchRegExp, transition string) *State {
 	inputMatch, _ := regexp.Compile(matchRegExp)
 	s.transitionInputMappings = append(s.transitionInputMappings, transitionMapping{inputMatch, transition})
+	return s
+}
+
+// AddImmediateTransition adds a transition that is immediate, without
+// requiring inputs. This allows reuse of behaviors from other states.
+func (s *State) AddImmediateTransition(transitionState *State) *State {
+	s.immediateTransition = transitionState
 	return s
 }
 
@@ -76,18 +85,15 @@ func Init() {
 		SetID("helpful").
 		SetMemoryWrite("des_act").
 		SetMemoryRead([]string{"name"})
-	s3 := s2.BuildTransitionState("Sorry %s, I don't know how to %s. How can I help you?", "default").
+	s2.BuildTransitionState("Sorry %s, I don't know how to %s. How can I help you?", "default").
 		SetID("cantdo").
-		SetMemoryWrite("des_act").
-		SetMemoryRead([]string{"name", "des_act"})
-	s3.AddTransition("default", s3)
-	s4 := s2.BuildTransitionState("My name is Machina. How can I help you?", "ask_name").
+		SetMemoryRead([]string{"name", "des_act"}).
+		AddImmediateTransition(s2)
+
+	s2.BuildTransitionState("My name is Machina. How can I help you?", "ask_name").
 		SetID("ask_name").
-		SetMemoryWrite("des_act").
-		AddTransition("default", s3)
-	s2.AddTransitionMapping("What is your name", "ask_name")
-	s3.AddTransitionMapping("What is your name", "ask_name")
-	s3.AddTransition("ask_name", s4)
+		AddImmediateTransition(s2)
+	s2.AddTransitionMapping("what is your name", "ask_name")
 }
 
 // ConversationLoop runs the bot's conversation loop.
@@ -101,6 +107,11 @@ func ConversationLoop(reader io.Reader, writer io.Writer) {
 			return
 		}
 	}
+}
+
+func normalizeInput(input string) string {
+	re := regexp.MustCompile("[\\?\\.!]")
+	return re.ReplaceAllString(strings.ToLower(input), "")
 }
 
 func determineTransition(input string, mappings []transitionMapping) string {
@@ -129,7 +140,7 @@ func act(input string) string {
 	if input != "" {
 		memory[currState.memoryWrite] = input[:len(input)-1]
 	}
-	nextTransition := determineTransition(input, currState.transitionInputMappings)
+	nextTransition := determineTransition(normalizeInput(input), currState.transitionInputMappings)
 
 	out := fmt.Sprintln()
 	if _, ok := currState.transitions[nextTransition]; ok {
@@ -141,7 +152,9 @@ func act(input string) string {
 		out += "I'm confused! I don't know what to do!"
 	}
 	out += fmt.Sprint(" ")
-
+	if currState.immediateTransition != nil {
+		currState = *currState.immediateTransition
+	}
 	if debug {
 		printDebugOut(out)
 	}

@@ -43,3 +43,7 @@ func TestDetermineTransition(t *testing.T) {
 	trans = determineTransition("ugh", transitions)
 	test(trans, "default", t)
 }
+
+func TestNormalizeInput(t *testing.T) {
+	test(normalizeInput("Abc!.?"), "abc", t)
+}
