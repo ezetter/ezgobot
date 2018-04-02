@@ -14,6 +14,7 @@ type transitionMapping struct {
 
 // State defines a node in the state machine representing a conversation.
 type State struct {
+	id                      string
 	transitions             map[string]*State
 	transitionInputMappings []transitionMapping
 	say                     string
@@ -21,16 +22,16 @@ type State struct {
 	memoryRead              []string
 }
 
-var currState, prevState State
+var currState State
 
 var memory map[string]string
+
+var debug bool
 
 // BuildTransitionState builds a state as a transition from the reciever
 func (s *State) BuildTransitionState(say string, transitionName string) *State {
 	newState := &State{transitions: make(map[string]*State), say: say}
-	if s.transitions != nil {
-		s.transitions["default"] = newState
-	}
+	s.transitions[transitionName] = newState
 	return newState
 }
 
@@ -38,6 +39,12 @@ func (s *State) BuildTransitionState(say string, transitionName string) *State {
 func (s *State) AddTransitionMapping(matchRegExp, transition string) *State {
 	inputMatch, _ := regexp.Compile(matchRegExp)
 	s.transitionInputMappings = append(s.transitionInputMappings, transitionMapping{inputMatch, transition})
+	return s
+}
+
+// SetID sets the state's identifier.
+func (s *State) SetID(id string) *State {
+	s.id = id
 	return s
 }
 
@@ -62,17 +69,25 @@ func (s *State) AddTransition(transitionName string, destination *State) *State 
 // Init initializes the bot.
 func Init() {
 	memory = make(map[string]string)
-	currState = *currState.BuildTransitionState("Hi. What's your name?", "default").
-		SetMemoryWrite("name")
-	s2 := currState.BuildTransitionState("Hello %s! How can I help you?", "default").
+	currState = State{id: "boot", transitions: make(map[string]*State)}
+	s1 := currState.BuildTransitionState("Hi. What's your name?", "default").
+		SetMemoryWrite("name").SetID("init")
+	s2 := s1.BuildTransitionState("Hello %s! How can I help you?", "default").
+		SetID("helpful").
 		SetMemoryWrite("des_act").
-		SetMemoryRead([]string{"name"}).
-		BuildTransitionState("Sorry %s, I don't know how to %s. How can I help you?", "default").
+		SetMemoryRead([]string{"name"})
+	s3 := s2.BuildTransitionState("Sorry %s, I don't know how to %s. How can I help you?", "default").
+		SetID("cantdo").
 		SetMemoryWrite("des_act").
 		SetMemoryRead([]string{"name", "des_act"})
-	s2.AddTransition("default", s2)
-	s2.BuildTransitionState("My name is Machina.", "ask_name").AddTransition("default", s2)
+	s3.AddTransition("default", s3)
+	s4 := s2.BuildTransitionState("My name is Machina. How can I help you?", "ask_name").
+		SetID("ask_name").
+		SetMemoryWrite("des_act").
+		AddTransition("default", s3)
 	s2.AddTransitionMapping("What is your name", "ask_name")
+	s3.AddTransitionMapping("What is your name", "ask_name")
+	s3.AddTransition("ask_name", s4)
 }
 
 // ConversationLoop runs the bot's conversation loop.
@@ -97,17 +112,39 @@ func determineTransition(input string, mappings []transitionMapping) string {
 	return "default"
 }
 
-func act(input string) string {
-	if input != "" {
-		memory[prevState.memoryWrite] = input[:len(input)-1]
-	}
-	remembered := retrieveMemory(currState)
-	out := fmt.Sprintln()
-	out += fmt.Sprintf(currState.say, remembered...)
+func printDebugIn(input string) {
+	fmt.Printf("input: %s\n", input)
+	fmt.Printf("  Curr state: %s\n", currState.id)
+}
 
+func printDebugOut(output string) {
+	fmt.Printf("  Curr state: %s\n", currState.id)
+
+	fmt.Printf("  Output: %s\n", output)
+}
+func act(input string) string {
+	if debug {
+		printDebugIn(input)
+	}
+	if input != "" {
+		memory[currState.memoryWrite] = input[:len(input)-1]
+	}
+	nextTransition := determineTransition(input, currState.transitionInputMappings)
+
+	out := fmt.Sprintln()
+	if _, ok := currState.transitions[nextTransition]; ok {
+		currState = *currState.transitions[nextTransition]
+		remembered := retrieveMemory(currState)
+		out += fmt.Sprintf(currState.say, remembered...)
+	} else {
+		// TODO: this needs to be impossible.
+		out += "I'm confused! I don't know what to do!"
+	}
 	out += fmt.Sprint(" ")
-	prevState = currState
-	currState = *currState.transitions["default"]
+
+	if debug {
+		printDebugOut(out)
+	}
 	return out
 }
 

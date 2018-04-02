@@ -17,16 +17,17 @@ func TestLoop(t *testing.T) {
 	Init()
 	w := bytes.NewBufferString("")
 
-	ConversationLoop(strings.NewReader("Bob\nexit"), w)
-	test(w.String(), "\nHi. What's your name? \nHello Bob! How can I help you? ", t)
+	ConversationLoop(strings.NewReader("Bob\ndo nothing\nexit"), w)
+	test(w.String(), "\nHi. What's your name? \nHello Bob! How can I help you? \nSorry Bob, I don't know how to do nothing. How can I help you? ", t)
 }
 
 func TestAct(t *testing.T) {
+	debug = true
 	Init()
 	test(act(""), "\nHi. What's your name? ", t)
 	test(act("Bob\n"), "\nHello Bob! How can I help you? ", t)
+	test(act("What is your name? \n"), "\nMy name is Machina. How can I help you? ", t)
 	test(act("do nothing\n"), "\nSorry Bob, I don't know how to do nothing. How can I help you? ", t)
-	test(act("What is your name?\n"), "\nMy name is Machina. ", t)
 }
 
 func TestDetermineTransition(t *testing.T) {
