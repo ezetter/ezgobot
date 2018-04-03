@@ -76,7 +76,7 @@ func (s *State) AddTransition(transitionName string, destination *State) *State 
 }
 
 // Init initializes the bot. Returns a bootstrap state that can be used
-// to build the bot.
+// to build the bot	.
 func Init() *State {
 	memory = make(map[string]string)
 	currState = State{id: "boot", transitions: make(map[string]*State)}
